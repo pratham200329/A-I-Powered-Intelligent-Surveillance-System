@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  surveillance-api:
+    build: .
+    container_name: smart-visitor-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/surveillance.db
+      - ALERT_EMAIL_ENABLED=false
+      - TWILIO_ENABLED=false
+    volumes:
+      - ./data:/app/data
+      - ./frontend:/app/frontend

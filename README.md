@@ -1,199 +1,211 @@
-# 🧠 AI-Powered Intelligent Surveillance System
+# Smart Visitor Detection, Tracking and Behavior Analysis System
 
-## 🚀 Overview
+Industry-grade surveillance platform combining real-time computer vision and machine learning for visitor recognition, trajectory tracking, behavior learning, and anomaly alerting.
 
-The AI-Powered Intelligent Surveillance System is a full-stack, production-grade application designed to transform traditional CCTV systems into intelligent, automated, and proactive monitoring solutions. It leverages advanced computer vision, machine learning, and modern web technologies to detect, track, analyze, and predict human behavior in real time.
+## 1) What this system does
 
----
+- Real-time person detection with YOLOv8
+- Face recognition using dlib embeddings (via face_recognition)
+- Multi-object tracking with ByteTrack and persistent IDs
+- Behavior classification into normal or suspicious visitors (Random Forest)
+- Unsupervised anomaly detection (Isolation Forest)
+- Peak hour forecasting for visits (time-series regression)
+- Visitor segmentation using K-Means clustering
+- Multi-camera ingestion and stream processing
+- FastAPI backend and web dashboard
+- Alerting by email and SMS (Twilio)
+- CSV export and historical analytics
 
-## ✨ Key Features
+## 2) Architecture
 
-### 🎥 Computer Vision Capabilities
+- cv_module: detection, tracking, recognition, feature engineering
+- data_pipeline: camera ingest, stream processor, feature store
+- ml_models: training and inference for all behavior models
+- backend: FastAPI APIs, DB models, analytics and ML services
+- frontend: live monitoring dashboard with charts
+- utils: config, logging, alerts, exports
 
-* Real-time person detection using **YOLOv8**
-* Multi-object tracking using **ByteTrack**
-* Frame-by-frame analysis with OpenCV
-* Optional face recognition support
+## 3) Project structure
 
-### 🤖 Machine Learning Intelligence
+- cv_module/
+- ml_models/
+- backend/
+- frontend/
+- data_pipeline/
+- utils/
+- data/
+- requirements.txt
 
-* Behavior Classification (Normal, Suspicious, Loitering, etc.)
-* Anomaly Detection (Isolation Forest)
-* Visitor Clustering (K-Means)
-* Visit Prediction (LightGBM/XGBoost)
+## 4) ML model design and why each is used
 
-### 📊 Dashboard & Analytics
+### Behavior classification (Random Forest)
+Input features:
+- duration_seconds
+- avg_speed
+- area_coverage
+- repeated_visit_count
+- odd_hour_visit
 
-* Real-time camera feed monitoring
-* Heatmaps for visitor activity
-* Behavior distribution charts
-* Visit trend forecasting
-* Incident replay system
+Why this model:
+- Strong tabular baseline
+- Handles non-linear relationships and feature interactions
+- Robust with noisy real-world behavior signals
 
-### 🚨 Alert System
+Output:
+- normal
+- suspicious
 
-* Automated anomaly alerts
-* Email notifications (SMTP)
-* SMS alerts via Twilio
-* Alert workflow (Open → Acknowledged → Resolved)
+### Anomaly detection (Isolation Forest)
+Input features:
+- same behavior features as classifier
 
-### 🧩 Additional Features
+Why this model:
+- Unsupervised and practical for unknown anomaly patterns
+- Works well with mixed-scale tabular behavior vectors
 
-* Zone-based rule enforcement
-* AI Copilot for natural language queries
-* Data export (CSV/JSON/ZIP evidence)
-* Model explainability (feature importance)
+Output:
+- anomaly_score
+- is_anomaly_prediction
 
----
+### Visit prediction (time-series regression)
+Model:
+- RandomForestRegressor with lag features and cyclical time encoding
 
-## 🏗️ System Architecture
+Why this model:
+- Captures non-linear seasonality patterns without deep-model overhead
+- Works even with limited historical volume
 
-The system follows a **4-layer modular architecture**:
+Output:
+- forecasted visit counts for upcoming hours
 
-1. **Computer Vision Layer** – Detection & Tracking
-2. **Data Pipeline Layer** – Feature Engineering & Processing
-3. **Machine Learning Layer** – Predictions & Insights
-4. **Application Layer** – Backend API + Frontend Dashboard
+### Clustering (K-Means)
+Input features:
+- same behavior feature set
 
----
+Why this model:
+- Effective for operational cohorting of visitor behavior profiles
+- Enables grouped policies and smarter monitoring
 
-## 🧰 Tech Stack
+Output groups (example):
+- frequent visitors
+- rare visitors
+- unknown pattern visitors
 
-### Backend
+## 5) Feature engineering details
 
-* FastAPI (REST API)
-* Python 3.10+
-* SQLAlchemy (ORM)
-* SQLite / PostgreSQL
+The pipeline extracts features from each tracked visitor session:
 
-### Frontend
+- Duration:
+  - exit_time - entry_time
+- Movement speed:
+  - total center-point travel distance divided by session duration
+- Area coverage:
+  - normalized bounding region occupied by trajectory over frame area
+- Repeated visit count:
+  - number of historical visits for the same identity
+- Odd-hour indicator:
+  - 1 for night/odd hours, 0 otherwise
+- Trajectory:
+  - list of center points, persisted for heatmap analytics
 
-* React.js (SPA)
-* Chart libraries & visualization tools
+## 6) Database entities
 
-### AI/ML
+- visitors:
+  - external_id, name, known/unknown, face embedding
+- visit_logs:
+  - entry/exit, camera id, track id, trajectory, behavior features, ML outputs
+- alerts:
+  - alert_type, severity, message, visitor/camera linkage, status
 
-* YOLOv8 (Ultralytics)
-* ByteTrack
-* Scikit-learn
-* LightGBM / XGBoost
+## 7) Setup guide
 
-### DevOps
+## Step 1: Create environment
 
-* Docker & Docker Compose
-* Environment-based configuration
+Windows PowerShell:
 
----
-
-## 🗄️ Database Schema
-
-Main Tables:
-
-* visitors
-* visit_logs
-* alerts
-* alert_workflows
-* zone_rules
-
-All relationships are managed using foreign keys and ORM.
-
----
-
-## ⚙️ Installation Guide
-
-### Prerequisites
-
-* Python 3.10+
-* Node.js 18+
-* Docker (optional)
-
-### 🔧 Backend Setup
-
-```bash
-git clone https://github.com/your-username/ai-surveillance-system.git
-cd ai-surveillance-system
-
-python -m venv venv
-source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate   # Windows
-
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
 pip install -r requirements.txt
-cp .env.example .env
 
-python -m backend.db.init_db
-python -m ml_models.train_all
+Copy environment config:
 
-uvicorn backend.main:app --reload
-```
+copy .env.example .env
 
-Backend runs at: [http://localhost:8000](http://localhost:8000)
+## Step 2: Optional - generate bootstrap dataset
 
----
+python data_pipeline/generate_sample_data.py
 
-### 💻 Frontend Setup
+## Step 3: Train ML models
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+python train_models.py --dataset data/behavior_dataset.csv
 
-Frontend runs at: [http://localhost:5173](http://localhost:5173)
+Or train from already captured DB logs:
 
----
+python train_models.py --from-db
 
-## 🐳 Docker Setup
+## Step 4: Start backend + dashboard
 
-```bash
-docker compose build
-docker compose up -d
-```
+python run_backend.py
 
-Services:
+Open:
 
-* API → [http://localhost:8000](http://localhost:8000)
-* Dashboard → [http://localhost:80](http://localhost:80)
+http://localhost:8000
 
----
+## Step 5: Enroll known visitors
 
-## 🔐 Security Features
+python seed_known_visitor.py --external-id EMP_001 --name "John" --image path_to_face.jpg
 
-* Secure API design
-* Environment-based secrets
-* Alert workflows & audit tracking
-* Prepared for RBAC integration
+## Step 6: Run standalone real-time pipeline (optional)
 
----
+python run_realtime.py --source 0 --camera-id cam_local
 
-## 📈 Performance
+## 8) API summary
 
-* 15 FPS (CPU) / 30+ FPS (GPU)
-* Behavior Classification Accuracy: **99.49%**
-* Anomaly Detection ROC-AUC: **0.83**
+- POST /api/visitors
+  - enroll known visitor with image
+- GET /api/visitors
+  - list known and unknown identities
+- GET /api/logs
+  - visit logs
+- GET /api/alerts
+  - anomaly and suspicious alerts
+- PATCH /api/alerts/{alert_id}/workflow
+  - acknowledge, assign, resolve, reopen, add notes
+- GET /api/analytics
+  - KPI, hourly, daily, weekly distributions
+- GET /api/analytics/heatmap
+  - movement heatmap matrix
+- GET /api/analytics/forecast
+  - predicted future visit counts
+- POST /api/ml/retrain
+  - retrain all ML models
+- POST /api/ml/predict
+  - apply latest ML predictions to logs
+- GET /api/export/logs
+  - CSV export
+- GET /api/export/incidents/{alert_id}
+  - ZIP evidence package (alert metadata, workflow timeline, related logs)
+- POST /api/cameras/start
+- POST /api/cameras/stop
+- GET /api/cameras/status/{camera_id}
+- GET /api/cameras/status
+- GET /api/live/{camera_id}
 
----
+## 9) Notes for production
 
-## 🚀 Future Enhancements
+- Use PostgreSQL instead of SQLite for concurrency
+- Place YOLO and tracking workers behind message queue for scale
+- Use GPU inference and model quantization for higher FPS
+- Add role-based auth and audit logs for compliance
+- Add per-zone rules for restricted areas and geofencing alerts
 
-* GPU-based inference scaling
-* Role-Based Access Control (RBAC)
-* Cloud deployment (AWS/GCP/Azure)
-* Advanced AI Copilot with LLMs
-* Multi-camera tracking (Re-ID)
+## 10) Evaluation artifacts
 
----
+After training, metrics are saved at:
 
-## 👨‍💻 Author
+- data/ml_artifacts/metrics.json
 
-**Riya Raina**
-MCA – Chandigarh University
+Model artifacts are stored at:
 
----
-
-## 📄 License
-
-This project is for academic and educational purposes.
-
----
-
-⭐ If you found this project useful, give it a star!
+- data/ml_artifacts/*.joblib
